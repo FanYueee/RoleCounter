@@ -1,0 +1,26 @@
+{
+  "_comment": "歡迎圖片系統配置",
+  "_settings": {
+    "enabled": "啟用/停用歡迎功能",
+    "channelId": "歡迎圖片發送的頻道ID",
+    "backgroundPath": "背景圖片路徑",
+    "avatarSize": "頭像大小 (像素)",
+    "avatarPosition": "頭像位置 {x: X座標, y: Y座標}",
+    "avatarScaleMode": "頭像縮放模式 [original: 原始大小, fixed: 固定大小, scale: 縮放倍數]",
+    "avatarScaleFactor": "縮放倍數 (僅在scale模式下使用)",
+    "fillTransparent": "是否填充透明區域",
+    "transparentFillColor": "透明區域填充顏色 (十六進位，例如: #000000)"
+  },
+  "enabled": true,
+  "channelId": "1248962059413098626",
+  "backgroundPath": "./welcome_background1.png",
+  "avatarSize": 256,
+  "avatarPosition": {
+    "x": 480,
+    "y": 170
+  },
+  "avatarScaleMode": "fixed",
+  "avatarScaleFactor": 1,
+  "fillTransparent": true,
+  "transparentFillColor": "#000000"
+}

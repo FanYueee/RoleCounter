@@ -5,6 +5,7 @@
 
 const { Client, GatewayIntentBits, PermissionFlagsBits, ChannelType, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const fs = require('fs');
+const WelcomeManager = require('./welcome-manager');
 
 /**
  * Discord客戶端實例
@@ -35,12 +36,10 @@ let config = {
 
 if (fs.existsSync('./config.json')) {
     config = { ...config, ...JSON.parse(fs.readFileSync('./config.json', 'utf8')) };
-} else {
-    console.log('config.json 不存在，正在創建預設配置檔...');
-    saveConfig();
-    console.log('已創建 config.json，請填入你的 bot token 和 client ID 後重新啟動');
-    process.exit(1);
 }
+
+// Initialize welcome manager
+let welcomeManager;
 
 /**
  * 儲存配置檔案到 config.json
@@ -59,7 +58,9 @@ async function countRoleMembers(guild, roleId) {
     const role = guild.roles.cache.get(roleId);
     if (!role) return 0;
     
+    // 確保已獲取伺服器成員以填充身分組成員快取
     try {
+        // 只有在成員快取為空或明顯過時時才重新獲取
         if (guild.members.cache.size === 0) {
             await guild.members.fetch();
         }
@@ -227,19 +228,27 @@ const commands = [
 client.once('ready', async () => {
     console.log(`Bot已登入: ${client.user.tag}`);
     
+    // 初始化歡迎管理器
+    welcomeManager = new WelcomeManager(client);
+    
     const rest = new REST({ version: '10' }).setToken(config.token);
     
     try {
         console.log('註冊slash commands...');
+        
+        // Combine role commands with welcome commands
+        const allCommands = [...commands, ...welcomeManager.getCommands()];
+        
         await rest.put(
             Routes.applicationCommands(config.clientId),
-            { body: commands }
+            { body: allCommands }
         );
         console.log('Slash commands註冊成功');
     } catch (error) {
         console.error('註冊slash commands失敗:', error);
     }
     
+    // 獲取所有伺服器的成員以填充快取
     console.log('正在獲取所有伺服器成員...');
     for (const guild of client.guilds.cache.values()) {
         try {
@@ -261,6 +270,12 @@ client.once('ready', async () => {
  */
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
+    
+    // 檢查是否為歡迎指令
+    if (welcomeManager && welcomeManager.isWelcomeCommand(interaction.commandName)) {
+        await welcomeManager.handleCommand(interaction);
+        return;
+    }
     
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
         await interaction.reply({ content: '你需要管理頻道的權限才能使用此指令', ephemeral: true });
@@ -378,6 +393,12 @@ client.on('interactionCreate', async interaction => {
  * @param {GuildMember} member - 加入的成員
  */
 client.on('guildMemberAdd', async member => {
+    // 處理歡迎圖片生成和發送
+    if (welcomeManager) {
+        await welcomeManager.handleMemberJoin(member);
+    }
+    
+    // 成員應該已經在快取中，但確保其存在
     setTimeout(updateAllChannels, 1000);
 });
 
@@ -386,6 +407,7 @@ client.on('guildMemberAdd', async member => {
  * @param {GuildMember} member - 離開的成員
  */
 client.on('guildMemberRemove', async member => {
+    // 成員會自動從快取中移除
     setTimeout(updateAllChannels, 1000);
 });
 
